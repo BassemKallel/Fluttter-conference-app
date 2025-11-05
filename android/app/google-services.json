@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "737322050994",
+    "project_id": "confapp-8f29e",
+    "storage_bucket": "confapp-8f29e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:737322050994:android:af4ad36d1272856b4ef0ab",
+        "android_client_info": {
+          "package_name": "com.example.conf_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDU_WbROUHAv_nEHGMkqmZ845LrotRrsmA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
