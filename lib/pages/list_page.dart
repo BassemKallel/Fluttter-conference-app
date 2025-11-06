@@ -1,38 +1,16 @@
 import 'package:conf_app/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Requis pour formater la date
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ListPage extends StatelessWidget {
 
   ListPage({Key? key}) : super(key: key);
 
-  // On crée une fausse liste pour l'aperçu
-  final List<Map<String, dynamic>> fakeConferences = [
-    {
-      'name': 'Conférence Android',
-      'speaker': 'Bassem',
-      'type': 'Demo Code',
-      'dateTime': DateTime.now().add(Duration(days: 5)),
-      'speakerImage': 'assets/images/avatar-homme.png',
-    },{
-      'name': 'Conférence Flutter',
-      'speaker': 'Imed',
-      'type': 'Demo Code',
-      'dateTime': DateTime.now().add(Duration(days: 5)),
-      'speakerImage': 'assets/images/avatar-homme.png',
-    },
-    {
-      'name': 'Le futur de l AI',
-      'speaker': 'Meriem',
-      'type': 'Talk show',
-      'dateTime': DateTime.now().add(Duration(days: 10)),
-      'speakerImage': 'assets/images/mere.png',
-    }
-  ];
+  final DateFormat formatter = DateFormat('le dd/MM/yyyy à HH:mm', 'fr_FR');
 
   @override
   Widget build(BuildContext context) {
-    final DateFormat formatter = DateFormat('le dd/MM/yyyy à HH:mm', 'fr_FR');
 
     return Scaffold(
       appBar: AppBar(
@@ -40,32 +18,66 @@ class ListPage extends StatelessWidget {
         backgroundColor: Colors.indigo,
       ),
       drawer: AppDrawer(),
-      body: ListView.builder(
-        itemCount: fakeConferences.length,
-        itemBuilder: (context, index) {
-          final conf = fakeConferences[index];
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection("events").snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
 
-          return Card(
-            margin: EdgeInsets.all(10.0),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage: AssetImage(conf['speakerImage']),
-              ),
-              // TAF 4: Nom de la conférence
-              title: Text(conf['name'], style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // TAF 4: Nom du speaker [cite: 593]
-                  Text("Par: ${conf['speaker']}"),
-                  // TAF 4: Type de la conférence [cite: 594]
-                  Text("Type: ${conf['type']}"),
-                  // TAF 4: Date et heure [cite: 595]
-                  Text(formatter.format(conf['dateTime'])),
-                ],
-              ),
-              isThreeLine: true, // Important pour un sous-titre plus grand
-            ),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text("Aucune conférence pour le moment."));
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+
+              final DocumentSnapshot eventDoc = snapshot.data!.docs[index];
+              final Map<String, dynamic> conf = eventDoc.data() as Map<String, dynamic>;
+
+              final Timestamp timestamp = conf['date'];
+              final DateTime confDate = timestamp.toDate();
+
+
+              final String avatarName = conf['avatar']?.toString().toLowerCase() ?? 'default';
+
+              return Card(
+                margin: EdgeInsets.all(10.0),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: AssetImage('assets/images/$avatarName.jpg'),
+                    onBackgroundImageError: (exception, stackTrace) {
+                    },
+                    child: Image.asset(
+                      'assets/images/avatar-homme.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(Icons.person);
+                      },
+                    ),
+                  ),
+                  title: Text(conf['subject'] ?? 'Sans titre', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Par: ${conf['speaker'] ?? 'N/A'}"),
+                      Text("Type: ${conf['type'] ?? 'N/A'}"),
+                      Text(formatter.format(confDate)),
+                    ],
+                  ),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(onPressed: (){}, icon: Icon(Icons.edit,color: Colors.green,)),
+                      IconButton(onPressed: (){}, icon: Icon(Icons.delete,color: Colors.red,)),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

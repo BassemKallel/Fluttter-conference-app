@@ -1,5 +1,6 @@
 import 'package:conf_app/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // <-- 1. Importer Firestore
 
 class AddEventPage extends StatefulWidget {
   const AddEventPage({super.key});
@@ -13,10 +14,8 @@ class _AddEventPageState extends State<AddEventPage> {
   final confNameController = TextEditingController();
   final speakerNameController = TextEditingController();
 
-  // TAF 1: Variable pour la liste déroulante Type
   String selectedConfType = 'talk';
 
-  // TAF 2: Variables pour la date/heure
   final _dateController = TextEditingController();
   DateTime? _selectedDateTime;
 
@@ -24,7 +23,7 @@ class _AddEventPageState extends State<AddEventPage> {
   void dispose() {
     confNameController.dispose();
     speakerNameController.dispose();
-    _dateController.dispose(); // <-- Ne pas oublier
+    _dateController.dispose();
     super.dispose();
   }
 
@@ -41,14 +40,15 @@ class _AddEventPageState extends State<AddEventPage> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (time == null) return; // L'utilisateur a annulé
+    if (time == null) return;
 
     setState(() {
       _selectedDateTime = DateTime(
         date.year, date.month, date.day,
         time.hour, time.minute,
       );
-      _dateController.text = "Date et heure sélectionnées !";
+      // Mettre à jour le texte pour que l'utilisateur voie la sélection
+      _dateController.text = "${date.day}/${date.month}/${date.year} ${time.format(context)}";
     });
   }
 
@@ -104,7 +104,7 @@ class _AddEventPageState extends State<AddEventPage> {
                 ),
               ),
 
-              // TAF 2: Champ Date/Heure
+              // Champ Date/Heure
               Container(
                 margin: EdgeInsets.only(bottom: 20),
                 child: TextFormField(
@@ -126,6 +126,7 @@ class _AddEventPageState extends State<AddEventPage> {
                 ),
               ),
 
+              // Champ Type
               Container(
                 margin: EdgeInsets.only(bottom: 20),
                 child: DropdownButtonFormField<String>(
@@ -154,15 +155,31 @@ class _AddEventPageState extends State<AddEventPage> {
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
 
-                          // Version simple: on affiche dans la console
-                          print("Nom: ${confNameController.text}");
-                          print("Speaker: ${speakerNameController.text}");
-                          print("Type: $selectedConfType");
-                          print("Date: $_selectedDateTime");
-
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text("Envoi en cours... (vérifiez la console)")));
+                                  content: Text("Envoi en cours...")));
+
+                          CollectionReference eventsRef = FirebaseFirestore.instance.collection("events");
+
+                          eventsRef.add({
+                            'subject': confNameController.text, // 'subject' est utilisé dans le PDF [cite: 913]
+                            'speaker': speakerNameController.text,
+                            'date': _selectedDateTime,
+                            'type': selectedConfType,
+                            'avatar': "lior" // Avatar codé en dur comme dans le PDF [cite: 914, 959]
+                          });
+
+                          // Vider les champs après envoi
+                          confNameController.clear();
+                          speakerNameController.clear();
+                          _dateController.clear();
+                          setState(() {
+                            _selectedDateTime = null;
+                            selectedConfType = 'talk';
+                          });
+
+                          // Cacher le clavier
+                          FocusScope.of(context).requestFocus(FocusNode());
                         }
                       },
                       child: Text("Envoyer"))),
